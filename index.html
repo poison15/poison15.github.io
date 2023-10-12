@@ -11,6 +11,8 @@
   <script>
     var audioChunks = [];
     var audioSentence = "चिकन मोमोज़ हटा दो";
+    var mediaRecorder;
+    var stream;
 
     // Create a dictionary of the sentences
     var sentences = {};
@@ -58,20 +60,29 @@ sentences["मेरे को दो प्लेट वेज मोमोज 
 sentences["वेज क्लियर सूप की जगह तीन चिकन क्लियर सूप कर दो"] = true;
 sentences["मेरे लिए 3 वेज क्लियर सूप और 3 फ्रूट बियर करदो साथ में।"] = true;
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = function (event) {
-        audioChunks.push(event.data);
-      };
-
-      document.getElementById('recordButton').addEventListener('click', function () {
+    document.getElementById('recordButton').addEventListener('click', function () {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (userStream) {
+        stream = userStream;
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = function (event) {
+          audioChunks.push(event.data);
+        };
         mediaRecorder.start();
         document.getElementById('recordButton').disabled = true;
         document.getElementById('doneButton').disabled = false;
+      }).catch(function(error) {
+        console.error('Error accessing the microphone: ', error);
       });
+    });
 
-      document.getElementById('doneButton').addEventListener('click', function () {
+    document.getElementById('doneButton').addEventListener('click', function () {
+      if (mediaRecorder) {
         mediaRecorder.stop();
+        if (stream) {
+          stream.getTracks().forEach(function(track) {
+            track.stop();
+          });
+        }
         document.getElementById('recordButton').disabled = false;
         document.getElementById('doneButton').disabled = true;
 
@@ -90,7 +101,7 @@ sentences["मेरे लिए 3 वेज क्लियर सूप औ�
             loadNextSentence();
           };
         };
-      });
+      }
     });
 
     function loadNextSentence() {
