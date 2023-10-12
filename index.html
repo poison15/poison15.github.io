@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Train</title>
+</head>
+<body>
+    <p id="sentence">This is sentence 1</p>
+    <button id="recordButton">Record</button>
+    <button id="doneButton" disabled>Done</button>
+
+    <script>
+        var audioChunks = [];
+        var audioSentence = "This is sentence 1";
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+            var mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = function (event) {
+                audioChunks.push(event.data);
+            };
+
+            document.getElementById('recordButton').addEventListener('click', function () {
+                mediaRecorder.start();
+                document.getElementById('recordButton').disabled = true;
+                document.getElementById('doneButton').disabled = false;
+            });
+
+            document.getElementById('doneButton').addEventListener('click', function () {
+                mediaRecorder.stop();
+                document.getElementById('recordButton').disabled = false;
+                document.getElementById('doneButton').disabled = true;
+
+                mediaRecorder.onstop = function () {
+                    var audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    var reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = function () {
+                        var audioData = reader.result;
+                        var sentence = audioSentence;
+
+                        // Send the audio and sentence to your backend or a cloud service here
+                        console.log("Audio Data: " + audioData);
+                        console.log("Sentence: " + sentence);
+
+                        // Load the next sentence
+                        if (audioSentence === "This is sentence 1") {
+                            audioSentence = "This is sentence 2";
+                        } else {
+                            audioSentence = "All sentences completed";
+                        }
+                        document.getElementById('sentence').textContent = audioSentence;
+                    };
+                };
+            });
+        });
+    </script>
+</body>
+</html>
