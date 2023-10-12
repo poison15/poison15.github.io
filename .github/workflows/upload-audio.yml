@@ -1,0 +1,32 @@
+name: Upload Audio Data
+
+on:
+  push:
+    branches:
+      - main  # Change this if your default branch is different
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Upload Audio Data
+        run: |
+          audioData="YOUR_AUDIO_DATA_HERE"  # Replace with your actual audio data
+          sentence="YOUR_SENTENCE_HERE"  # Replace with your sentence
+
+          echo $audioData > audioData.txt
+          echo $sentence > sentence.txt
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          git add audioData.txt sentence.txt
+          git commit -m "Add audio data and sentence"
+          git push -f origin main
+
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
