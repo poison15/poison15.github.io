@@ -4,20 +4,18 @@
   <title>Audio Train</title>
 </head>
 <body>
-  <p id="sentence">चिकन मोमोज़ हटा दो</p>
+  <p id="sentence">चिकन मोमोज़ चाहिए</p>
   <button id="recordButton">Record</button>
   <button id="doneButton" disabled>Done</button>
 
   <script>
     var audioChunks = [];
-    var audioSentence = "चिकन मोमोज़ हटा दो";
-    var mediaRecorder;
-    var stream;
+    var audioSentence = "चिकन मोमोज़ चाहिए";
 
     // Create a dictionary of the sentences
     var sentences = {};
     sentences["चिकन मोमोज़ चाहिए"] = true;
-sentences["मुझे चिकन मोमोज़ और एक आइस टी चाहिए"] = true;
+    sentences["मुझे चिकन मोमोज़ और एक आइस टी चाहिए"] = true;
 sentences["चिकन मोमोज़ भी देदो"] = true;
 sentences["मुझे तीन चिकन मोमोज़ चाहिए"] = true;
 sentences["मुझे चिकन मोमोज़ की एक प्लेट चाहिए।"] = true;
@@ -60,48 +58,39 @@ sentences["मेरे को दो प्लेट वेज मोमोज 
 sentences["वेज क्लियर सूप की जगह तीन चिकन क्लियर सूप कर दो"] = true;
 sentences["मेरे लिए 3 वेज क्लियर सूप और 3 फ्रूट बियर करदो साथ में।"] = true;
 
-    document.getElementById('recordButton').addEventListener('click', function () {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (userStream) {
-        stream = userStream;
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = function (event) {
-          audioChunks.push(event.data);
-        };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = function (event) {
+        audioChunks.push(event.data);
+      };
+
+      document.getElementById('recordButton').addEventListener('click', function () {
         mediaRecorder.start();
         document.getElementById('recordButton').disabled = true;
         document.getElementById('doneButton').disabled = false;
-      }).catch(function(error) {
-        console.error('Error accessing the microphone: ', error);
       });
-    });
 
-    document.getElementById('doneButton').addEventListener('click', function () {
-      if (mediaRecorder) {
+      document.getElementById('doneButton').addEventListener('click', function () {
         mediaRecorder.stop();
-        if (stream) {
-          stream.getTracks().forEach(function(track) {
-            track.stop();
-          });
-        }
         document.getElementById('recordButton').disabled = false;
         document.getElementById('doneButton').disabled = true;
 
         mediaRecorder.onstop = function () {
           var audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           var reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = function () {
+          reader.onload = function () {
             var audioData = reader.result;
             var sentence = audioSentence;
 
-            // Send the audio and sentence to your GitHub Actions workflow
-            sendAudioDataToGitHub(audioData, sentence);
+            // Save the audio and sentence to a CSV file
+            saveDataToCSV(audioData, sentence);
 
             // Load the next sentence from the dictionary
             loadNextSentence();
           };
+          reader.readAsDataURL(audioBlob);
         };
-      }
+      });
     });
 
     function loadNextSentence() {
@@ -110,39 +99,32 @@ sentences["मेरे लिए 3 वेज क्लियर सूप औ�
         return sentences[sentence];
       });
 
-      // Set the sentence to be recorded
-      audioSentence = nextSentence;
+      if (nextSentence) {
+        // Set the sentence to be recorded
+        audioSentence = nextSentence;
 
-      // Mark the sentence as recorded
-      sentences[nextSentence] = false;
+        // Mark the sentence as recorded
+        sentences[nextSentence] = false;
 
-      // Update the UI to display the next sentence
-      document.getElementById('sentence').textContent = audioSentence;
+        // Update the UI to display the next sentence
+        document.getElementById('sentence').textContent = audioSentence;
+      } else {
+        // All sentences are completed
+        document.getElementById('sentence').textContent = "All sentences completed";
+      }
     }
 
-    function sendAudioDataToGitHub(audioData, sentence) {
-      fetch('https://YOUR_GITHUB_REPOSITORY_URL/contents/data.csv', {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'token ${{ secrets.GH_TOKEN }}', // Use your GitHub secret
-          'Accept': 'application/vnd.github.v3+json',
-        },
-        body: JSON.stringify({
-          message: 'Adding audio data',
-          content: btoa(audioData), // Convert to base64
-          branch: 'main',
-        })
-      })
-      .then(response => {
-        if (response.ok) {
-          console.log('Data sent to GitHub Actions workflow successfully');
-        } else {
-          console.error('Failed to send data to GitHub Actions workflow');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
+    function saveDataToCSV(audioData, sentence) {
+      var csvContent = sentence + ',' + audioData + '\n';
+
+      // Create a Blob from the CSV content
+      var blob = new Blob([csvContent], { type: 'text/csv' });
+
+      // Create a temporary link element to trigger the download
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'audio_data.csv';
+      link.click();
     }
   </script>
 </body>
